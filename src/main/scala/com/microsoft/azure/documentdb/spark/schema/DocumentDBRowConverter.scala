@@ -33,6 +33,7 @@ import org.apache.spark.sql.types.{DataType, _}
 import org.json.{JSONArray, JSONObject}
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.HashMap
 
 /**
   * Knows how to map from some Data Source native RDD to an {{{RDD[Row]}}}
@@ -167,7 +168,10 @@ object DocumentDBRowConverter extends RowConverter[Document]
   }
 
   def documentToMap(document: Document): Map[String, AnyRef] = {
-    document.getHashMap.asScala.toMap
+    if (document == null)
+      new HashMap[String, AnyRef]
+    else
+      document.getHashMap.asScala.toMap
   }
 
 }
