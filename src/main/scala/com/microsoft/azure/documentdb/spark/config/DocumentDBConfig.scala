@@ -32,10 +32,10 @@ object DocumentDBConfig {
   val Database = "database"
   val Collection = "collection"
   val Masterkey = "masterkey"
-  val SamplingRatio = "schema_samplingRatio"
-  val PreferredRegionsList = "preferredRegions"
+  val SamplingRatio = "schema_samplingratio"
+  val PreferredRegionsList = "preferredregions"
   val Upsert = "upsert"
-  val ConnectionMode = "connectionMode"
+  val ConnectionMode = "connectionmode"
   
   // Mandatory
   val required = List(
