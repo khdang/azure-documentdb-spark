@@ -23,6 +23,7 @@
 package com.microsoft.azure.documentdb.spark.schema
 
 import java.sql.{Date, Timestamp}
+import java.util
 
 import com.microsoft.azure.documentdb._
 import org.apache.spark.rdd.RDD
@@ -76,14 +77,13 @@ object DocumentDBRowConverter extends RowConverter[Document]
     val values: Seq[Any] = schema.fields.map {
       case StructField(name, et, _, mdata)
         if (mdata.contains("idx") && mdata.contains("colname")) =>
-        val colName = mdata.getString("colname")
-        val idx = mdata.getLong("idx").toInt
-        json.get(colName).flatMap(v => Option(v)).map(toSQL(_, ArrayType(et, true))).collect {
-        case elemsList: Seq[_] if ((0 until elemsList.size) contains idx) => elemsList(idx)
-      } orNull
+          val colName = mdata.getString("colname")
+          val idx = mdata.getLong("idx").toInt
+          json.get(colName).flatMap(v => Option(v)).map(toSQL(_, ArrayType(et, true))).collect {
+            case elemsList: Seq[_] if ((0 until elemsList.size) contains idx) => elemsList(idx)
+          } orNull
       case StructField(name, dataType, _, _) =>
-      json.get(name).flatMap(v => Option(v)).map(
-        toSQL(_, dataType)).orNull
+        json.get(name).flatMap(v => Option(v)).map(toSQL(_, dataType)).orNull
     }
     new GenericRowWithSchema(values.toArray, schema)
   }
@@ -94,14 +94,18 @@ object DocumentDBRowConverter extends RowConverter[Document]
         case (list: List[AnyRef@unchecked], ArrayType(elementType, _)) =>
           null
         case (_, struct: StructType) =>
-          recordAsRow(documentToMap(value.asInstanceOf[Document]), struct)
+          val jsonMap: Map[String, AnyRef] = value match {
+            case doc: Document => documentToMap(doc)
+            case hm: util.HashMap[String, AnyRef] => hm.asScala.toMap
+          }
+          recordAsRow(jsonMap, struct)
         case (_, map: MapType) =>
           (value match {
             case document: Document => documentToMap(document)
             case _ => value.asInstanceOf[java.util.HashMap[String, AnyRef]].asScala.toMap
           }).map(element => (toSQL(element._1, map.keyType), toSQL(element._2, map.valueType)))
         case (_, array: ArrayType) =>
-          value.asInstanceOf[java.util.ArrayList[AnyRef]].asScala.toArray
+          value.asInstanceOf[java.util.ArrayList[AnyRef]].asScala.map(element => toSQL(element, array.elementType)).toArray
         case (_, binaryType: BinaryType) =>
           value.asInstanceOf[java.util.ArrayList[Int]].asScala.map(x => x.toByte).toArray
         case _ =>
